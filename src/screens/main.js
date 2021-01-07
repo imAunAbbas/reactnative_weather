@@ -14,9 +14,10 @@ import {colors, styles, fontSizes, apiKey, weatherURL} from '../constants';
 import Geolocation from '@react-native-community/geolocation';
 
 const MainScreen = () => {
-  const [temp, setTemp] = useState(45);
-  const [city, setCity] = useState('Islamabad');
-  const [country, setCountry] = useState('PK');
+  const [temp, setTemp] = useState(0);
+  const [city, setCity] = useState('--');
+  const [country, setCountry] = useState('--');
+  const [description, setDescription] = useState('--');
   const [search, setSearch] = useState('');
 
   // '$weatherURLq=$cityName&appid=$apiKey&units=metric'
@@ -27,7 +28,15 @@ const MainScreen = () => {
       async (position) => {
         const lat = position.coords.latitude;
         const long = position.coords.longitude;
-        console.log(lat + ' ' + long);
+        const data = await fetch(
+          `${weatherURL}lat=${lat}&lon=${long}&appid=${apiKey}&units=metric`,
+        );
+        let json = await data.json();
+        console.log(json);
+        setCity(json.name);
+        setCountry(json.sys.country);
+        setTemp(parseInt(json.main.temp));
+        setDescription(json.weather[0].description);
       },
       () => Alert.alert('Error', 'Please turn on device location first'),
       {enableHighAccuracy: true, timeout: 3000, maximumAge: 1000},
@@ -80,6 +89,9 @@ const MainScreen = () => {
             Search
           </Text>
         </View>
+        <Text style={{color: colors.primaryColor, fontSize: fontSizes.heading}}>
+          {description}
+        </Text>
         <Text style={{color: colors.primaryColor, fontSize: fontSizes.heading}}>
           {city}, {country}
         </Text>
