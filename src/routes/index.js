@@ -14,7 +14,7 @@ const MainStack = createStackNavigator(
     Main: {
       screen: MainScreen,
       navigationOptions: () => ({
-        title: 'Main Screen',
+        title: 'Weather Forecast',
         headerTitleStyle: {
           fontSize: fontSizes.normal,
         },
