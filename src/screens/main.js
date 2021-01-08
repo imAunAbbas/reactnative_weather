@@ -4,49 +4,90 @@ import {
   Text,
   Image,
   Alert,
+  Keyboard,
   StatusBar,
   TextInput,
   ImageBackground,
   TouchableOpacity,
+  TouchableWithoutFeedback,
 } from 'react-native';
-import {colors, styles, fontSizes, apiKey, weatherURL} from '../constants';
+import {
+  colors,
+  styles,
+  fontSizes,
+  apiKey,
+  weatherURL,
+  screenWidth,
+} from '../constants';
 
 import Geolocation from '@react-native-community/geolocation';
 
 const MainScreen = () => {
+  const [flag, setFlag] = useState(false);
   const [temp, setTemp] = useState(0);
   const [city, setCity] = useState('--');
   const [country, setCountry] = useState('--');
   const [description, setDescription] = useState('--');
   const [search, setSearch] = useState('');
 
-  // '$weatherURLq=$cityName&appid=$apiKey&units=metric'
-  // '$weatherURLlat=${location.latitude}&lon=${location.longitude}&appid=$apiKey&units=metric'
-
   const getLocationTemp = () => {
     Geolocation.getCurrentPosition(
       async (position) => {
         const lat = position.coords.latitude;
         const long = position.coords.longitude;
-        const data = await fetch(
+        const response = await fetch(
           `${weatherURL}lat=${lat}&lon=${long}&appid=${apiKey}&units=metric`,
         );
-        let json = await data.json();
-        console.log(json);
-        setCity(json.name);
-        setCountry(json.sys.country);
-        setTemp(parseInt(json.main.temp));
-        setDescription(json.weather[0].description);
+        if (response.status === 200) {
+          let json = await response.json();
+          setCity(json.name);
+          setCountry(json.sys.country);
+          setTemp(parseInt(json.main.temp));
+          setDescription(json.weather[0].description);
+        } else {
+          Alert.alert(
+            'Network Error',
+            'Please check your network connection and try again.',
+          );
+        }
       },
-      () => Alert.alert('Error', 'Please turn on device location first'),
+      () =>
+        Alert.alert(
+          'Error',
+          'Turn on device location or allow location access from settings',
+        ),
       {enableHighAccuracy: true, timeout: 3000, maximumAge: 1000},
     );
   };
 
-  const getCityTemp = () => {};
+  const getCityTemp = async () => {
+    if (!search) return;
+    const response = await fetch(
+      `${weatherURL}q=${search}&appid=${apiKey}&units=metric`,
+    );
+    if (response.status === 200) {
+      let json = await response.json();
+      setSearch('');
+      setCity(json.name);
+      setCountry(json.sys.country);
+      setTemp(parseInt(json.main.temp));
+      setDescription(json.weather[0].description);
+    } else if (response.status === 404) {
+      Alert.alert('Error', 'City not found');
+      setSearch('');
+    } else {
+      Alert.alert(
+        'Network Error',
+        'Please check your network connection and try again.',
+      );
+    }
+  };
 
   useEffect(() => {
-    setTimeout(getLocationTemp, 2000);
+    if (!flag) {
+      setFlag(true);
+      setTimeout(getLocationTemp, 1000);
+    }
   });
 
   return (
@@ -55,57 +96,65 @@ const MainScreen = () => {
         barStyle="light-content"
         backgroundColor={colors.primaryColor}
       />
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          backgroundColor: colors.backgroundColor,
-        }}>
+      <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
         <View
           style={{
-            marginTop: 10,
+            flex: 1,
             alignItems: 'center',
             justifyContent: 'flex-start',
-            flexDirection: 'row',
+            backgroundColor: colors.backgroundColor,
           }}>
-          <TextInput
-            keyboardType="default"
-            autoCorrect={false}
-            autoCompleteType="off"
-            style={styles.input}
-            blurOnSubmit
-            placeholder="Search City"
-            returnKeyType="done"
-            onChangeText={setSearch}
-            value={search}
-          />
+          <View
+            style={{
+              marginTop: 10,
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'row',
+            }}>
+            <TextInput
+              keyboardType="default"
+              autoCorrect={false}
+              autoCompleteType="off"
+              style={styles.input}
+              blurOnSubmit
+              placeholder="Search City"
+              returnKeyType="done"
+              onChangeText={setSearch}
+              value={search}
+            />
+            <TouchableOpacity onPress={getCityTemp}>
+              <Text
+                style={{
+                  color: colors.primaryColor,
+                  fontSize: fontSizes.description,
+                }}>
+                Search
+              </Text>
+            </TouchableOpacity>
+          </View>
           <Text
             style={{
-              color: colors.primaryColor,
-              fontSize: fontSizes.description,
-            }}
-            onPress={getCityTemp}>
-            Search
+              ...styles.text,
+              marginTop: screenWidth * 0.2,
+              fontSize: fontSizes.heading,
+            }}>
+            {city}, {country}
           </Text>
+          <Text style={{...styles.text, fontSize: fontSizes.big}}>
+            {temp}°c
+          </Text>
+          <Text style={{...styles.text, fontSize: fontSizes.description}}>
+            {description}
+          </Text>
+          <TouchableOpacity style={styles.fabButton} onPress={getLocationTemp}>
+            <Image source={require('../images/gps.png')} />
+          </TouchableOpacity>
+          <ImageBackground
+            source={require('../images/background.png')}
+            style={styles.bgImage}
+          />
         </View>
-        <Text style={{color: colors.primaryColor, fontSize: fontSizes.heading}}>
-          {description}
-        </Text>
-        <Text style={{color: colors.primaryColor, fontSize: fontSizes.heading}}>
-          {city}, {country}
-        </Text>
-        <Text style={{color: colors.primaryColor, fontSize: fontSizes.big}}>
-          {temp}°c
-        </Text>
-        <TouchableOpacity style={styles.fabButton} onPress={getLocationTemp}>
-          <Image source={require('../images/gps.png')} />
-        </TouchableOpacity>
-        <ImageBackground
-          source={require('../images/background.png')}
-          style={styles.background}
-        />
-      </View>
+      </TouchableWithoutFeedback>
     </>
   );
 };
