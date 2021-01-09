@@ -9,6 +9,7 @@ import {
   TextInput,
   ImageBackground,
   TouchableOpacity,
+  PermissionsAndroid,
   TouchableWithoutFeedback,
 } from 'react-native';
 import {
@@ -20,15 +21,15 @@ import {
   screenWidth,
 } from '../constants';
 
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service';
 
 const MainScreen = () => {
-  const [flag, setFlag] = useState(false);
   const [temp, setTemp] = useState(0);
   const [city, setCity] = useState('--');
   const [country, setCountry] = useState('--');
   const [description, setDescription] = useState('--');
   const [search, setSearch] = useState('');
+  const [isGranted, setGrantedPermission] = useState(false);
 
   const getLocationTemp = () => {
     Geolocation.getCurrentPosition(
@@ -51,11 +52,7 @@ const MainScreen = () => {
           );
         }
       },
-      () =>
-        Alert.alert(
-          'Error',
-          'Turn on device location or allow location access from settings',
-        ),
+      (err) => Alert.alert('Error', err.message),
       {enableHighAccuracy: true, timeout: 3000, maximumAge: 1000},
     );
   };
@@ -84,11 +81,27 @@ const MainScreen = () => {
   };
 
   useEffect(() => {
-    if (!flag) {
-      setFlag(true);
-      setTimeout(getLocationTemp, 1000);
-    }
-  });
+    const requestLocationPermission = async () => {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Access Required',
+            message: 'This App needs to Access your location',
+          },
+        );
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          setGrantedPermission(true);
+          getLocationTemp();
+        } else {
+          alert('Permission Denied');
+        }
+      } catch (err) {
+        Alert.alert('Error', err.toString());
+      }
+    };
+    requestLocationPermission();
+  }, [isGranted]);
 
   return (
     <>
@@ -125,7 +138,7 @@ const MainScreen = () => {
             <TouchableOpacity onPress={getCityTemp}>
               <Text
                 style={{
-                  color: colors.primaryColor,
+                  ...styles.text,
                   fontSize: fontSizes.description,
                 }}>
                 Search
